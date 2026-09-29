@@ -157,9 +157,9 @@ fn test_line_clear_and_explosion_trigger() {
     game.piece_y = 18; // I piece cells at rot 0 are (cx, 1), so piece_y=18 puts cells at row 19
 
     game.hard_drop();
-    // 1 row should be cleared immediately (single blast, no explosion because lines <= 2)
+    // 1 row should trigger single blast and start explosion pause
     assert_eq!(game.blasts.singles, 1);
-    assert!(!game.board.is_exploding());
+    assert!(game.board.is_exploding());
 }
 
 #[test]
@@ -206,8 +206,8 @@ fn test_tick_and_lock_delay() {
     assert!(game.lock_delay_timer.is_some());
     let initial_locked = game.pieces_locked;
 
-    // Simulate elapsed time past lock delay (Intense is 250ms)
-    game.lock_delay_timer = Some(std::time::Instant::now() - std::time::Duration::from_millis(300));
+    // Simulate elapsed time past lock delay (Intense is 400ms)
+    game.lock_delay_timer = Some(std::time::Instant::now() - std::time::Duration::from_millis(500));
     game.tick();
     assert_eq!(game.pieces_locked, initial_locked + 1);
 }

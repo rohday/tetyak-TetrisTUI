@@ -408,11 +408,7 @@ impl Game {
         if !full_lines.is_empty() {
             let count = full_lines.len();
             self.record_blast(count);
-            if count <= 2 {
-                self.board.clear_lines(&full_lines);
-            } else {
-                self.board.start_explosion(full_lines, 120);
-            }
+            self.board.start_explosion(full_lines, 180);
         }
 
         self.spawn_next_piece();

@@ -131,9 +131,9 @@ impl Difficulty {
 
     pub fn lock_delay_ms(&self) -> u64 {
         match self {
-            Difficulty::Chill => 500,
-            Difficulty::Normal => 400,
-            Difficulty::Intense => 250,
+            Difficulty::Chill => 900,
+            Difficulty::Normal => 650,
+            Difficulty::Intense => 400,
         }
     }
 
