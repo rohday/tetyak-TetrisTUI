@@ -157,6 +157,7 @@ impl Difficulty {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct Randomizer {
     pub difficulty: Difficulty,
     pub last_piece: Option<Tetromino>,
