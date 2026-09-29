@@ -1,6 +1,31 @@
 [package]
-name = "tetris"
+name = "tetyak"
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
+authors = ["Samyak <samyak@users.noreply.github.com>"]
+description = "A taste-first, minimal terminal Tetris built with Ratatui"
+license = "MIT"
+default-run = "tetyak"
+
+[lib]
+name = "tetyak"
+path = "src/lib.rs"
+
+[[bin]]
+name = "tetyak"
+path = "src/main.rs"
+
+[[bin]]
+name = "tetris"
+path = "src/bin/tetris.rs"
 
 [dependencies]
+ratatui = "0.29"
+crossterm = "0.28"
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
