@@ -126,7 +126,9 @@ pub fn run() -> Result<(), Box<dyn Error>> {
         terminal.draw(|f| ui::render(f, &game, &theme))?;
 
         // Determine poll timeout
-        let timeout = if game.board.is_exploding() || das.dir.is_some() {
+        let timeout = if das.dir.is_some() {
+            Duration::from_millis(5)
+        } else if game.board.is_exploding() {
             Duration::from_millis(10)
         } else {
             Duration::from_millis(25)
@@ -272,13 +274,13 @@ pub fn run() -> Result<(), Box<dyn Error>> {
             if let Some(dir) = das.dir {
                 let now = Instant::now();
                 // If on legacy terminals without release events, expire hold if no events seen
-                if now.duration_since(das.last_event_seen) > Duration::from_millis(160) {
+                if now.duration_since(das.last_event_seen) > Duration::from_millis(140) {
                     das.cancel();
-                } else if now.duration_since(das.pressed_at) >= Duration::from_millis(125) {
-                    // ARR step interval: 35ms for smooth 30Hz auto-sliding
+                } else if now.duration_since(das.pressed_at) >= Duration::from_millis(85) {
+                    // ARR step interval: 18ms for blazing fast auto-sliding (down: 30ms)
                     let arr_interval = match dir {
-                        AutoRepeatDir::Down => Duration::from_millis(45),
-                        _ => Duration::from_millis(35),
+                        AutoRepeatDir::Down => Duration::from_millis(30),
+                        _ => Duration::from_millis(18),
                     };
 
                     if now.duration_since(das.last_repeat) >= arr_interval {
