@@ -1,5 +1,5 @@
 use crate::board::Board;
-use crate::piece::{Difficulty, Randomizer, Tetromino};
+pub use crate::piece::{Difficulty, Randomizer, Tetromino};
 use std::time::Instant;
 
 /// Tracks counts and labels for line clears ("blasts").
