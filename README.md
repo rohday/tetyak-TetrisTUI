@@ -1,6 +1,7 @@
 # tetyak
 
 A minimal, taste-first terminal Tetris built with Rust and Ratatui, inspired by the visual design of [appleTUI](../appleTUI).
+(vibecoded for myself)
 
 ![tetyak](Screenshot_2026-09-29_20-30-41.png)
 
