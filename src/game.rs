@@ -2,6 +2,29 @@ use crate::board::Board;
 pub use crate::piece::{Difficulty, Randomizer, Tetromino};
 use std::time::Instant;
 
+/// Duration of the short post-lock highlight, kept below the 180 ms line-clear animation.
+pub const LOCK_FLASH_MS: u64 = 140;
+/// Duration of the hard-drop streak.
+pub const DROP_TRAIL_MS: u64 = 140;
+/// Duration of the grey-out animation played before the game-over modal appears.
+pub const GAME_OVER_ANIM_MS: u64 = 800;
+
+/// Cells of the piece that just locked, for a brief highlight.
+#[derive(Debug, Clone)]
+pub struct LockFlash {
+    pub cells: [(i32, i32); 4],
+    pub piece: Tetromino,
+    pub at: Instant,
+}
+
+/// Cells swept by a hard drop, for a fading streak above the landing position.
+#[derive(Debug, Clone)]
+pub struct DropTrail {
+    pub cells: Vec<(i32, i32)>,
+    pub piece: Tetromino,
+    pub at: Instant,
+}
+
 /// Tracks counts and labels for line clears ("blasts").
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct BlastStats {
@@ -43,6 +66,9 @@ pub struct Game {
     pub start_time: Instant,
     pub last_fall_time: Instant,
     pub lock_delay_timer: Option<Instant>,
+    pub lock_flash: Option<LockFlash>,
+    pub drop_trail: Option<DropTrail>,
+    pub game_over_at: Option<Instant>,
 }
 
 impl Game {
@@ -72,6 +98,9 @@ impl Game {
             start_time: now,
             last_fall_time: now,
             lock_delay_timer: None,
+            lock_flash: None,
+            drop_trail: None,
+            game_over_at: None,
         }
     }
 
@@ -96,6 +125,9 @@ impl Game {
         self.start_time = now;
         self.last_fall_time = now;
         self.lock_delay_timer = None;
+        self.lock_flash = None;
+        self.drop_trail = None;
+        self.game_over_at = None;
     }
 
     /// Moves the active piece left by 1 column if unblocked.
@@ -209,6 +241,7 @@ impl Game {
         let gy = self.ghost_y();
         let drop_dist = (gy - self.piece_y).max(0);
         self.score += (drop_dist as u64) * 2;
+        self.drop_trail = self.compute_drop_trail(gy);
         self.piece_y = gy;
         self.lock_current_piece();
     }
@@ -241,7 +274,7 @@ impl Game {
             self.piece_x,
             self.piece_y,
         ) {
-            self.status = GameStatus::GameOver;
+            self.set_game_over();
         }
 
         true
@@ -394,6 +427,11 @@ impl Game {
     }
 
     fn lock_current_piece(&mut self) {
+        self.lock_flash = Some(LockFlash {
+            cells: self.current_cells(),
+            piece: self.current_piece,
+            at: Instant::now(),
+        });
         self.board.lock_piece(
             self.current_piece,
             self.current_rotation,
@@ -429,7 +467,48 @@ impl Game {
             self.piece_x,
             self.piece_y,
         ) {
-            self.status = GameStatus::GameOver;
+            self.set_game_over();
+        }
+    }
+
+    fn set_game_over(&mut self) {
+        self.status = GameStatus::GameOver;
+        self.game_over_at = Some(Instant::now());
+    }
+
+    /// Cells from the piece's start position down to just above where it lands, per column.
+    fn compute_drop_trail(&self, landing_y: i32) -> Option<DropTrail> {
+        let start = self.current_cells();
+        let mut cells = Vec::new();
+        for &(x, _) in &start {
+            if cells.iter().any(|&(cx, _)| cx == x) {
+                continue;
+            }
+            let top = start.iter().filter(|c| c.0 == x).map(|c| c.1).min()?;
+            let landed_top = top + (landing_y - self.piece_y);
+            for y in top..landed_top {
+                cells.push((x, y));
+            }
+        }
+        if cells.is_empty() {
+            None
+        } else {
+            Some(DropTrail {
+                cells,
+                piece: self.current_piece,
+                at: Instant::now(),
+            })
+        }
+    }
+
+    /// Fraction of the game-over fade that has elapsed. Returns 1.0 once finished or when no
+    /// game-over timestamp exists (for example when a caller sets the status directly).
+    pub fn game_over_progress(&self) -> f32 {
+        match self.game_over_at {
+            Some(t) => {
+                (t.elapsed().as_secs_f32() * 1000.0 / GAME_OVER_ANIM_MS as f32).clamp(0.0, 1.0)
+            }
+            None => 1.0,
         }
     }
 }

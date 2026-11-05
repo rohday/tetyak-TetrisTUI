@@ -90,3 +90,53 @@ fn test_render_small_and_zero_terminals() {
     let mut terminal = Terminal::new(backend).unwrap();
     terminal.draw(|f| ui::render(f, &game, &theme)).unwrap();
 }
+
+fn fg_sum(c: ratatui::style::Color) -> u32 {
+    match c {
+        ratatui::style::Color::Rgb(r, g, b) => r as u32 + g as u32 + b as u32,
+        _ => panic!("expected an RGB color, got {c:?}"),
+    }
+}
+
+#[test]
+fn test_modal_dims_board_behind_it() {
+    let theme = Theme::apple_dark();
+    let mut game = Game::new(Difficulty::Normal);
+    game.status = GameStatus::Playing;
+
+    let mut terminal = Terminal::new(TestBackend::new(100, 35)).unwrap();
+    terminal.draw(|f| ui::render(f, &game, &theme)).unwrap();
+    // Top-left corner of the 64x22 dashboard centered in 100x35 is (18, 6): a HOLD border cell.
+    let playing = terminal.backend().buffer().cell((18, 6)).unwrap().fg;
+
+    game.status = GameStatus::Paused;
+    terminal.draw(|f| ui::render(f, &game, &theme)).unwrap();
+    let paused = terminal.backend().buffer().cell((18, 6)).unwrap().fg;
+
+    assert!(fg_sum(paused) < fg_sum(playing));
+}
+
+#[test]
+fn test_game_over_modal_waits_for_fade() {
+    let theme = Theme::apple_dark();
+    let mut game = Game::new(Difficulty::Normal);
+    game.status = GameStatus::GameOver;
+    game.game_over_at = Some(std::time::Instant::now());
+
+    let text = |game: &Game| {
+        let mut terminal = Terminal::new(TestBackend::new(100, 35)).unwrap();
+        terminal.draw(|f| ui::render(f, game, &theme)).unwrap();
+        terminal
+            .backend()
+            .buffer()
+            .content()
+            .iter()
+            .map(|c| c.symbol())
+            .collect::<String>()
+    };
+
+    assert!(!text(&game).contains("Final Score"));
+    // No timestamp means the animation is treated as finished.
+    game.game_over_at = None;
+    assert!(text(&game).contains("Final Score"));
+}

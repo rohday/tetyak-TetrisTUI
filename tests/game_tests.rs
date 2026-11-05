@@ -227,3 +227,56 @@ fn test_pause_toggle() {
 }
 
 
+
+#[test]
+fn test_top_out_sets_game_over_timestamp_and_restart_clears_it() {
+    use tetyak::board::{HEIGHT, WIDTH};
+
+    let mut game = Game::new(Difficulty::Normal);
+    game.select_difficulty(Difficulty::Normal);
+    assert!(game.game_over_at.is_none());
+
+    // Fill the spawn area (leaving column 0 open so no line is complete) and lock a piece.
+    for y in 0..2 {
+        for x in 1..WIDTH {
+            game.board.set_cell(x, y, Some(Tetromino::I));
+        }
+    }
+    assert!(HEIGHT > 2);
+    game.hard_drop();
+
+    assert_eq!(game.status, GameStatus::GameOver);
+    assert!(game.game_over_at.is_some());
+    assert!(game.game_over_progress() < 1.0);
+
+    game.select_difficulty(Difficulty::Normal);
+    assert_eq!(game.status, GameStatus::Playing);
+    assert!(game.game_over_at.is_none());
+}
+
+#[test]
+fn test_hard_drop_records_trail_and_lock_flash() {
+    use tetyak::board::HEIGHT;
+
+    let mut game = Game::new(Difficulty::Normal);
+    game.select_difficulty(Difficulty::Normal);
+    let start_cells = game.current_cells();
+    let landing_y = game.ghost_y();
+    let fall = landing_y - game.piece_y;
+    assert!(fall > 0);
+
+    game.hard_drop();
+
+    let trail = game.drop_trail.as_ref().expect("trail recorded");
+    assert!(!trail.cells.is_empty());
+    for &(x, y) in &trail.cells {
+        // Each trail cell lies in a column the piece occupied, at or below its start row and
+        // above the row where that column's top cell landed.
+        let col_top = start_cells.iter().filter(|c| c.0 == x).map(|c| c.1).min().unwrap();
+        assert!(y >= col_top && y < col_top + fall, "cell ({x},{y})");
+        assert!((y as usize) < HEIGHT);
+    }
+
+    let flash = game.lock_flash.as_ref().expect("flash recorded");
+    assert!(flash.cells.iter().all(|&(_, y)| y >= landing_y));
+}

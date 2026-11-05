@@ -101,6 +101,9 @@ pub fn run() -> Result<(), Box<dyn Error>> {
     }));
 
     enable_raw_mode()?;
+    // Terminals with the kitty keyboard protocol report key releases, so held keys
+    // are tracked exactly. Others need the idle-timeout fallback below.
+    let has_release_events = crossterm::terminal::supports_keyboard_enhancement().unwrap_or(false);
     let mut stdout = stdout();
     execute!(
         stdout,
@@ -274,7 +277,9 @@ pub fn run() -> Result<(), Box<dyn Error>> {
             if let Some(dir) = das.dir {
                 let now = Instant::now();
                 // If on legacy terminals without release events, expire hold if no events seen
-                if now.duration_since(das.last_event_seen) > Duration::from_millis(140) {
+                if !has_release_events
+                    && now.duration_since(das.last_event_seen) > Duration::from_millis(140)
+                {
                     das.cancel();
                 } else if now.duration_since(das.pressed_at) >= Duration::from_millis(85) {
                     // ARR step interval: 18ms for blazing fast auto-sliding (down: 30ms)
